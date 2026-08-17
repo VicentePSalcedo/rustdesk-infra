@@ -181,6 +181,92 @@ resource "aws_instance" "this" {
   }
 }
 
+# --- Data volume (survives instance replacement) ---
+
+resource "aws_ebs_volume" "data" {
+  availability_zone = var.availability_zone
+  size              = 20
+  type              = "gp3"
+  encrypted         = true
+
+  tags = {
+    Name       = "${var.project_name}-${var.environment}-data"
+    RustdeskData = "true"
+  }
+}
+
+resource "aws_volume_attachment" "data" {
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.data.id
+  instance_id = aws_instance.this.id
+}
+
+# --- Automated snapshots (DLM) ---
+
+resource "aws_iam_role" "dlm" {
+  name = "${var.project_name}-${var.environment}-dlm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { Service = "dlm.amazonaws.com" }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "dlm" {
+  name = "${var.project_name}-${var.environment}-dlm-policy"
+  role = aws_iam_role.dlm.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ec2:CreateSnapshot",
+        "ec2:CreateSnapshots",
+        "ec2:DeleteSnapshot",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeSnapshots",
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_dlm_lifecycle_policy" "data" {
+  description        = "Nightly snapshots of the RustDesk data volume 7-day retention"
+  execution_role_arn = aws_iam_role.dlm.arn
+  state              = "ENABLED"
+
+  policy_details {
+    resource_types = ["VOLUME"]
+    policy_type    = "EBS_SNAPSHOT_MANAGEMENT"
+
+    schedule {
+      name = "nightly"
+
+      create_rule {
+        interval      = 24
+        interval_unit = "HOURS"
+        times         = ["03:00"]
+      }
+
+      retain_rule {
+        count = 7
+      }
+
+      copy_tags = true
+    }
+
+    target_tags = {
+      RustdeskData = "true"
+    }
+  }
+}
+
 # --- Elastic IP ---
 
 resource "aws_eip" "this" {

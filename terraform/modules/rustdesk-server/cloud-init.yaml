@@ -58,7 +58,52 @@ write_files:
         caddy_data:
         caddy_config:
 
+  - path: /etc/rustdesk/mount-data.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      # The dedicated data volume is attached as a blank EBS device. On ARM
+      # Nitro instances it appears as /dev/nvme1n1 (root is /dev/nvme0n1).
+      # Detect the non-root, non-mounted disk and prepare it once.
+      DEV=""
+      for d in /dev/nvme1n1 /dev/nvme2n1 /dev/xvdf /dev/sdf; do
+        if [ -b "$d" ] && ! mount | grep -q "^$d "; then
+          # Skip the root device
+          if ! lsblk -no MOUNTPOINT "$d" | grep -q "/"; then
+            DEV="$d"
+            break
+          fi
+        fi
+      done
+
+      if [ -z "$DEV" ]; then
+        echo "No data volume found; keeping /var/lib/rustdesk on root (unprotected)" >&2
+        exit 0
+      fi
+
+      echo "Data volume detected: $DEV"
+
+      # Format only if not already formatted
+      if ! blkid "$DEV" | grep -q 'TYPE="ext4"'; then
+        echo "Formatting $DEV as ext4"
+        mkfs.ext4 -m 0 -L rustdesk-data "$DEV"
+      fi
+
+      # Mount
+      mkdir -p /var/lib/rustdesk
+      mount "$DEV" /var/lib/rustdesk
+
+      # Persist across reboots
+      UUID=$(blkid -s UUID -o value "$DEV")
+      if ! grep -q "rustdesk-data" /etc/fstab; then
+        echo "UUID=$UUID /var/lib/rustdesk ext4 defaults,nofail 0 2" >> /etc/fstab
+      fi
+
+      echo "Mounted $DEV at /var/lib/rustdesk (UUID=$UUID)"
+
 runcmd:
-  - mkdir -p /var/lib/rustdesk
+  - /etc/rustdesk/mount-data.sh
   - systemctl enable --now docker
   - docker compose -f /etc/rustdesk/compose.yml up -d

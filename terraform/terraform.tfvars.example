@@ -1,4 +1,5 @@
 # Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+# Secrets (rustdesk_key) live in secrets.yaml, encrypted with sops.
 
 aws_region   = "us-east-1"
 environment  = "prod"
@@ -6,10 +7,6 @@ environment  = "prod"
 availability_zone = "us-east-1a"
 
 instance_type = "t4g.micro"
-
-# Shared key — clients must present this to register.
-# Generate: openssl rand -hex 16
-rustdesk_key = "REPLACE_ME"
 
 # Public hostname clients use (A record -> Elastic IP, set after first apply).
 relay_host = "rd.example.com"

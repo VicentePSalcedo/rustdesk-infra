@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # rustdesk-infra — Root Variables
-# No defaults for account-specific or secret values.
+# No defaults for account-specific values. Secrets live in secrets.yaml (sops).
 # -----------------------------------------------------------------------------
 
 variable "aws_region" {
@@ -38,12 +38,6 @@ variable "instance_type" {
   description = "EC2 instance type for the relay"
   type        = string
   default     = "t4g.micro"
-}
-
-variable "rustdesk_key" {
-  description = "Shared key clients must present to register (generate: openssl rand -hex 16)"
-  type        = string
-  sensitive   = true
 }
 
 variable "relay_host" {

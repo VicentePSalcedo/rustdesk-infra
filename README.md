@@ -60,12 +60,22 @@ Then copy `backend.hcl.example` → `backend.hcl` and fill in the bucket/table.
 
 ## Configure
 
+Secrets are encrypted with sops in `secrets.yaml` (committed). Edit with:
+
+```sh
+sops secrets.yaml        # set rustdesk_key (generate: openssl rand -hex 16)
+```
+
+Non-secret values:
+
 ```sh
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 # edit: aws_region, environment, availability_zone,
-#       rustdesk_key (generate: openssl rand -hex 16),
 #       relay_host (A record -> EIP, set after first apply)
 ```
+
+Terraform decrypts `secrets.yaml` at apply time via the `carlpett/sops` provider,
+using your local age key (`~/.config/sops/age/keys.txt`).
 
 ## Deploy
 
@@ -87,8 +97,9 @@ After apply, create a DNS `A` record for `relay_host` pointing at the Elastic IP
 
 - SSH is closed by default. To open it (e.g. to your tailnet only), set
   `admin_ssh_cidrs = ["100.64.0.0/10"]` in `terraform.tfvars`.
-- The shared key is stored in SSM Parameter Store (SecureString) and fetched at
-  boot via the instance role — it is never in plaintext `user_data`.
+- The shared key is encrypted at rest in `secrets.yaml` (sops) and written to
+  SSM Parameter Store (SecureString) at apply time, where the instance fetches
+  it at boot via its IAM role — it is never in plaintext `user_data`.
 - Recommend an AWS Budgets alert at ~$15/mo to catch egress surprises.
 
 ## Cost (approx)

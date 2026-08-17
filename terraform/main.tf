@@ -1,3 +1,8 @@
+# Decrypt committed secrets (secrets.yaml) via sops + the local age key.
+data "sops_file" "secrets" {
+  source_file = "${path.module}/../secrets.yaml"
+}
+
 module "network" {
   source = "./modules/network"
 
@@ -16,7 +21,7 @@ module "rustdesk_server" {
   vpc_id          = module.network.vpc_id
   subnet_id       = module.network.subnet_id
   instance_type   = var.instance_type
-  rustdesk_key    = var.rustdesk_key
+  rustdesk_key    = data.sops_file.secrets.data["rustdesk_key"]
   relay_host      = var.relay_host
   admin_ssh_cidrs = var.admin_ssh_cidrs
 }

@@ -22,12 +22,15 @@
               terraform-ls
               awscli2
               tflint
+              sops
+              age
             ];
 
             shellHook = ''
               echo "rustdesk-infra dev shell loaded"
               echo "  Terraform: $(terraform --version | head -1)"
               echo "  AWS CLI:   $(aws --version 2>&1 | head -1)"
+              echo "  sops:      $(sops --version 2>&1 | head -1)"
             '';
           };
         }

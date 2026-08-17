@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------------------
 # rustdesk-infra — Root Variables
-# No defaults for account-specific values. Secrets live in secrets.yaml (sops).
+# No defaults for account-specific values. Server Pro license is entered in the
+# web console (not a file secret), so no secrets.yaml is required.
 # -----------------------------------------------------------------------------
 
 variable "aws_region" {
@@ -38,12 +39,6 @@ variable "instance_type" {
   description = "EC2 instance type for the relay"
   type        = string
   default     = "t4g.micro"
-}
-
-variable "relay_host" {
-  description = "Public hostname clients use to reach the relay (A record -> EIP)"
-  type        = string
-  default     = ""
 }
 
 variable "admin_ssh_cidrs" {

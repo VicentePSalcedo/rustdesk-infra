@@ -8,11 +8,6 @@ output "instance_id" {
   value       = module.rustdesk_server.instance_id
 }
 
-output "key_param_name" {
-  description = "SSM Parameter Store path holding the shared key"
-  value       = module.rustdesk_server.key_param_name
-}
-
 output "vpc_id" {
   value = module.network.vpc_id
 }

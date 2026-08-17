@@ -1,5 +1,5 @@
 # Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
-# Secrets (rustdesk_key) live in secrets.yaml, encrypted with sops.
+# The Server Pro license is entered in the web console after launch — not here.
 
 aws_region   = "us-east-1"
 environment  = "prod"
@@ -7,9 +7,6 @@ environment  = "prod"
 availability_zone = "us-east-1a"
 
 instance_type = "t4g.micro"
-
-# Public hostname clients use (A record -> Elastic IP, set after first apply).
-relay_host = "rd.example.com"
 
 # Optional: open SSH to specific CIDRs. Empty = SSM Session Manager only.
 # admin_ssh_cidrs = ["100.64.0.0/10"]

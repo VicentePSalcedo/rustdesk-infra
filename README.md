@@ -1,25 +1,25 @@
 # rustdesk-infra
 
-Self-hosted RustDesk relay (hbbs + hbbr) on AWS, managed as Terraform.
+Self-hosted RustDesk **Server Pro** (hbbs + hbbr) on AWS, managed as Terraform.
 
 **Design goals:** minimal footprint, secure by default, zero-touch provisioning.
 
 ## Architecture
 
-- **One `t4g.micro` (ARM) instance** running hbbs + hbbr in Docker
+- **One `t4g.micro` (ARM) instance** running hbbs + hbbr (Server Pro image)
 - **Dedicated VPC** (`10.20.0.0/24`), single public subnet, **no NAT gateway**
 - **No SSH** — admin access via AWS SSM Session Manager (IAM, no keys, no port 22)
-- **Security group** exposes only `21115/tcp`, `21116/tcp+udp`, `21117/tcp`
-- **Shared key** (from SSM Parameter Store) so only your clients can register
+- **Security group** exposes `21114`–`21119` TCP + `21116` UDP
+- **Web console** on `21114` for license, users, devices, access control
 - **Elastic IP** for a stable public address; **IMDSv2** enforced; encrypted gp3 EBS
 
 ```
 public internet
       │
-      ▼  EIP (rd.example.com)
-  ┌───────────────┐  SG: 21115/tcp, 21116/tcp+udp, 21117/tcp
+      ▼  EIP (remote.artoriastechlab.com)
+  ┌───────────────┐  SG: 21114-21119/tcp, 21116/udp
   │ t4g.micro ARM │
-  │  hbbs + hbbr  │
+  │  hbbs + hbbr  │   (rustdesk-server-pro, host networking)
   └───────────────┘
       ▲
       └── admin via SSM Session Manager (no SSH)
@@ -32,7 +32,7 @@ terraform/
   providers.tf          # aws provider + s3 backend (partial config)
   variables.tf          # all inputs, no account-specific defaults
   main.tf               # module wiring
-  outputs.tf            # relay IP / key param / instance id
+  outputs.tf            # relay IP / instance id
   terraform.tfvars.example
   backend.hcl.example
   modules/
@@ -44,9 +44,9 @@ scripts/
 
 ## Prerequisites
 
-- AWS credentials available to the AWS CLI (SSO / access keys / role)
+- AWS credentials available to the AWS CLI (`aws login`)
 - `terraform >= 1.5`
-- A domain (or just the EIP) to point clients at
+- A domain (or just the EIP) for the web console + clients
 
 ## One-time backend bootstrap
 
@@ -60,22 +60,10 @@ Then copy `backend.hcl.example` → `backend.hcl` and fill in the bucket/table.
 
 ## Configure
 
-Secrets are encrypted with sops in `secrets.yaml` (committed). Edit with:
-
-```sh
-sops secrets.yaml        # set rustdesk_key (generate: openssl rand -hex 16)
-```
-
-Non-secret values:
-
 ```sh
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# edit: aws_region, environment, availability_zone,
-#       relay_host (A record -> EIP, set after first apply)
+# edit: aws_region, environment, availability_zone
 ```
-
-Terraform decrypts `secrets.yaml` at apply time via the `carlpett/sops` provider,
-using your local age key (`~/.config/sops/age/keys.txt`).
 
 ## Deploy
 
@@ -86,27 +74,28 @@ terraform plan
 terraform apply
 ```
 
-After apply, create a DNS `A` record for `relay_host` pointing at the Elastic IP
-(`terraform output relay_public_ip`). Clients then set:
+## Post-launch (Server Pro setup)
 
-- **ID server** = `relay_host`
-- **Relay server** = `relay_host`
-- **Key** = the shared key
+1. Get the IP: `terraform output relay_public_ip`
+2. Create an A record `remote.artoriastechlab.com` → that IP (GoDaddy DNS)
+3. Open the web console: `https://<ip>:21114` (default login `admin` / `test1234`)
+4. **Set your license** in the console (from https://rustdesk.com/pricing.html)
+5. Change the default password immediately
+6. Set up HTTPS for the web console (see RustDesk docs)
 
 ## Security notes
 
 - SSH is closed by default. To open it (e.g. to your tailnet only), set
   `admin_ssh_cidrs = ["100.64.0.0/10"]` in `terraform.tfvars`.
-- The shared key is encrypted at rest in `secrets.yaml` (sops) and written to
-  SSM Parameter Store (SecureString) at apply time, where the instance fetches
-  it at boot via its IAM role — it is never in plaintext `user_data`.
+- The web console runs plain HTTP on 21114 until you configure HTTPS — do this
+  before exposing it to clients in production.
 - Recommend an AWS Budgets alert at ~$15/mo to catch egress surprises.
 
 ## Cost (approx)
 
-~$7.75/mo fixed (`t4g.micro` + 20GB gp3) + data egress at ~$0.09/GB.
+~$7.75/mo fixed (`t4g.micro` + 20GB gp3) + data egress at ~$0.09/GB + the
+RustDesk Server Pro license.
 
 ## Open decisions
 
 - AWS account placement (same account as IIO vs separate account under Organizations)
-- Auth method for the AWS CLI (SSO vs access keys vs assume-role)

@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# rustdesk-server Module — hbbs + hbbr on a single ARM instance
+# rustdesk-server Module — RustDesk Server Pro (hbbs + hbbr, host networking)
 # -----------------------------------------------------------------------------
 
 # Ubuntu 24.04 ARM64 AMI (Canonical official account)
@@ -18,18 +18,7 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# Shared key in SSM Parameter Store (SecureString) — fetched at boot, never in user_data
-resource "aws_ssm_parameter" "key" {
-  name  = "/${var.project_name}/${var.environment}/rustdesk/key"
-  type  = "SecureString"
-  value = var.rustdesk_key
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-rustdesk-key"
-  }
-}
-
-# --- IAM: SSM Session Manager (admin) + read the key parameter ---
+# --- IAM: SSM Session Manager (admin access, no SSH) ---
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
@@ -45,26 +34,11 @@ data "aws_iam_policy_document" "assume_role" {
 resource "aws_iam_role" "instance" {
   name               = "${var.project_name}-${var.environment}-instance-role"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
-
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-  ]
 }
 
-resource "aws_iam_role_policy" "read_key" {
-  name = "read-rustdesk-key"
-  role = aws_iam_role.instance.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = [aws_ssm_parameter.key.arn]
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "instance" {
@@ -72,12 +46,20 @@ resource "aws_iam_instance_profile" "instance" {
   role = aws_iam_role.instance.name
 }
 
-# --- Security group: relay ports public, SSH opt-in ---
+# --- Security group: RustDesk Server Pro ports 21114-21119 public, SSH opt-in ---
 
 resource "aws_security_group" "this" {
   name        = "${var.project_name}-${var.environment}-sg"
-  description = "RustDesk relay — 21115-21117 public, admin SSH optional"
+  description = "RustDesk Server Pro — 21114-21119 public, admin SSH optional"
   vpc_id      = var.vpc_id
+
+  ingress {
+    description = "web console"
+    from_port   = 21114
+    to_port     = 21114
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   ingress {
     description = "hbbs NAT type test"
@@ -107,6 +89,22 @@ resource "aws_security_group" "this" {
     description = "hbbr relay"
     from_port   = 21117
     to_port     = 21117
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "web client (hbbs)"
+    from_port   = 21118
+    to_port     = 21118
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "web client (hbbr)"
+    from_port   = 21119
+    to_port     = 21119
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -158,11 +156,7 @@ resource "aws_instance" "this" {
     encrypted   = true
   }
 
-  user_data = templatefile("${path.module}/cloud-init.yaml", {
-    key_param  = aws_ssm_parameter.key.name
-    region     = var.aws_region
-    relay_host = var.relay_host
-  })
+  user_data = file("${path.module}/cloud-init.yaml")
 
   tags = {
     Name = "${var.project_name}-${var.environment}-instance"

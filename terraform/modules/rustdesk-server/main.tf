@@ -54,6 +54,22 @@ resource "aws_security_group" "this" {
   vpc_id      = var.vpc_id
 
   ingress {
+    description = "HTTP (Caddy: HTTPS redirect + ACME challenge)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS (Caddy web console)"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     description = "web console"
     from_port   = 21114
     to_port     = 21114
@@ -156,7 +172,9 @@ resource "aws_instance" "this" {
     encrypted   = true
   }
 
-  user_data = file("${path.module}/cloud-init.yaml")
+  user_data = templatefile("${path.module}/cloud-init.yaml", {
+    domain = var.domain_name
+  })
 
   tags = {
     Name = "${var.project_name}-${var.environment}-instance"

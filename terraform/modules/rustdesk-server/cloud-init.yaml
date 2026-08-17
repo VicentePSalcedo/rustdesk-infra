@@ -1,6 +1,7 @@
 #cloud-config
-# RustDesk Server Pro — hbbs + hbbr via Docker Compose (host networking).
-# License is entered in the web console (https://<ip>:21114), not here.
+# RustDesk Server Pro — hbbs + hbbr + Caddy reverse proxy (host networking).
+# License is entered in the web console, not here.
+# ${domain} is substituted by Terraform templatefile at apply time.
 
 package_update: true
 package_upgrade: false
@@ -10,6 +11,13 @@ packages:
   - docker-compose-v2
 
 write_files:
+  - path: /etc/rustdesk/Caddyfile
+    permissions: '0644'
+    content: |
+      ${domain} {
+          reverse_proxy 127.0.0.1:21114
+      }
+
   - path: /etc/rustdesk/compose.yml
     permissions: '0644'
     content: |
@@ -33,6 +41,22 @@ write_files:
             - /var/lib/rustdesk:/root
           network_mode: "host"
           restart: unless-stopped
+
+        caddy:
+          container_name: caddy
+          image: caddy:2
+          network_mode: "host"
+          restart: unless-stopped
+          volumes:
+            - /etc/rustdesk/Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy_data:/data
+            - caddy_config:/config
+          depends_on:
+            - hbbs
+
+      volumes:
+        caddy_data:
+        caddy_config:
 
 runcmd:
   - mkdir -p /var/lib/rustdesk

@@ -19,6 +19,11 @@ variable "instance_type" {
   default = "t4g.micro"
 }
 
+variable "domain_name" {
+  type    = string
+  default = "remote.artoriastechlab.com"
+}
+
 variable "admin_ssh_cidrs" {
   type    = list(string)
   default = []

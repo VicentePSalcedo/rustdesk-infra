@@ -15,5 +15,6 @@ module "rustdesk_server" {
   vpc_id          = module.network.vpc_id
   subnet_id       = module.network.subnet_id
   instance_type   = var.instance_type
+  domain_name     = var.domain_name
   admin_ssh_cidrs = var.admin_ssh_cidrs
 }

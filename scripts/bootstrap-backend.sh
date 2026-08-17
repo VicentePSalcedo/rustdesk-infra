@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# One-time bootstrap: create the S3 state bucket + DynamoDB lock table.
-# Usage: scripts/bootstrap-backend.sh <bucket-name> <region> [lock-table]
+# One-time bootstrap: create the S3 state bucket (versioned, encrypted, private).
+# State locking is S3-native (use_lockfile = true), so NO DynamoDB table is needed.
+# Usage: scripts/bootstrap-backend.sh <bucket-name> <region>
 
-BUCKET="${1:?usage: $0 <bucket-name> <region> [lock-table]}"
+BUCKET="${1:?usage: $0 <bucket-name> <region>}"
 REGION="${2:-us-east-1}"
-TABLE="${3:-terraform-lock}"
 
 if [ "$REGION" = "us-east-1" ]; then
   aws s3api create-bucket --bucket "$BUCKET" --region "$REGION"
@@ -30,11 +30,4 @@ aws s3api put-public-access-block \
   --public-access-block-configuration \
   '{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}'
 
-aws dynamodb create-table \
-  --table-name "$TABLE" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region "$REGION"
-
-echo "backend ready: s3://$BUCKET (key=rustdesk/terraform.tfstate) + dynamodb:$TABLE"
+echo "backend ready: s3://$BUCKET (state + S3-native .tflock locking, no DynamoDB)"

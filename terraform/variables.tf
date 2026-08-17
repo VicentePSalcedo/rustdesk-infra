@@ -41,6 +41,12 @@ variable "instance_type" {
   default     = "t4g.micro"
 }
 
+variable "domain_name" {
+  description = "Public hostname for the web console + clients (A record -> EIP)"
+  type        = string
+  default     = "remote.artoriastechlab.com"
+}
+
 variable "admin_ssh_cidrs" {
   description = "Optional CIDRs allowed to SSH (e.g. tailnet). Empty = SSM-only admin."
   type        = list(string)

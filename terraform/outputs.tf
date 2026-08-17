@@ -4,13 +4,13 @@ output "relay_public_ip" {
 }
 
 output "web_console_url" {
-  description = "Web console (after HTTPS reverse-proxy setup; before that: http://<relay_public_ip>:21114)"
-  value       = "https://${var.domain_name}"
+  description = "Web console URL (plain HTTP on 21114)"
+  value       = "http://${module.rustdesk_server.eip_public_ip}:21114"
 }
 
-output "web_console_url_bootstrap" {
-  description = "Web console before HTTPS is configured"
-  value       = "http://${module.rustdesk_server.eip_public_ip}:21114"
+output "relay_domain" {
+  description = "Hostname clients point at for ID server + relay (A record -> EIP)"
+  value       = var.domain_name
 }
 
 output "instance_id" {

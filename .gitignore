@@ -1,0 +1,20 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Local-only config — secrets & account-specific values (never commit)
+backend.hcl
+*.tfvars
+!terraform.tfvars.example
+
+# Nix / direnv
+.direnv/
+result
+
+# Editor / OS
+.DS_Store
+Thumbs.db

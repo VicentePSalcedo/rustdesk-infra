@@ -1,0 +1,50 @@
+#cloud-config
+# RustDesk relay bootstrap — installs Docker, starts hbbs + hbbr, fetches key from SSM.
+# Variables (${...}) are substituted by Terraform templatefile at apply time.
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - docker.io
+  - awscli
+  - unzip
+
+write_files:
+  - path: /etc/rustdesk/fetch-key.sh
+    permissions: '0700'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      KEY=$(aws ssm get-parameter \
+        --name "${key_param}" \
+        --region "${region}" \
+        --with-decryption \
+        --query 'Parameter.Value' \
+        --output text)
+      mkdir -p /var/lib/rustdesk
+      cat > /etc/rustdesk/compose.yml <<COMPOSE
+      services:
+        hbbs:
+          image: rustdesk/rustdesk-server:latest
+          container_name: hbbs
+          network_mode: host
+          restart: unless-stopped
+          volumes:
+            - /var/lib/rustdesk:/root
+          command: hbbs -r ${relay_host} -k $KEY
+        hbbr:
+          image: rustdesk/rustdesk-server:latest
+          container_name: hbbr
+          network_mode: host
+          restart: unless-stopped
+          volumes:
+            - /var/lib/rustdesk:/root
+          command: hbbr -k $KEY
+      COMPOSE
+      chmod 600 /etc/rustdesk/compose.yml
+
+runcmd:
+  - systemctl enable --now docker
+  - /etc/rustdesk/fetch-key.sh
+  - docker compose -f /etc/rustdesk/compose.yml up -d

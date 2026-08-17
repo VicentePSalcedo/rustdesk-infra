@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+
+aws_region   = "us-east-1"
+environment  = "prod"
+
+availability_zone = "us-east-1a"
+
+instance_type = "t4g.micro"
+
+# Shared key — clients must present this to register.
+# Generate: openssl rand -hex 16
+rustdesk_key = "REPLACE_ME"
+
+# Public hostname clients use (A record -> Elastic IP, set after first apply).
+relay_host = "rd.example.com"
+
+# Optional: open SSH to specific CIDRs. Empty = SSM Session Manager only.
+# admin_ssh_cidrs = ["100.64.0.0/10"]

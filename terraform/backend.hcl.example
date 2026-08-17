@@ -1,0 +1,8 @@
+# Copy to backend.hcl and fill in. Never commit backend.hcl.
+# Bucket/table are created once via scripts/bootstrap-backend.sh.
+
+bucket         = "rustdesk-terraform-state-REPLACE_WITH_ACCOUNT_ID"
+key            = "rustdesk/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "terraform-lock"
+encrypt        = true

@@ -1,0 +1,6 @@
+# rustdesk-infra — Helix workspace language config.
+# Requires the dev shell (direnv / `nix develop`) so terraform is on PATH.
+
+[[language]]
+name = "hcl"  # Terraform (covers .tf/.hcl)
+formatter = { command = "terraform", args = ["fmt", "-"] }

@@ -7,10 +7,14 @@ BUCKET="${1:?usage: $0 <bucket-name> <region> [lock-table]}"
 REGION="${2:-us-east-1}"
 TABLE="${3:-terraform-lock}"
 
-aws s3api create-bucket \
-  --bucket "$BUCKET" \
-  --region "$REGION" \
-  --create-bucket-configuration "LocationConstraint=$REGION"
+if [ "$REGION" = "us-east-1" ]; then
+  aws s3api create-bucket --bucket "$BUCKET" --region "$REGION"
+else
+  aws s3api create-bucket \
+    --bucket "$BUCKET" \
+    --region "$REGION" \
+    --create-bucket-configuration "LocationConstraint=$REGION"
+fi
 
 aws s3api put-bucket-versioning \
   --bucket "$BUCKET" \

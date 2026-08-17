@@ -50,7 +50,7 @@ resource "aws_iam_instance_profile" "instance" {
 
 resource "aws_security_group" "this" {
   name        = "${var.project_name}-${var.environment}-sg"
-  description = "RustDesk Server Pro — 21114-21119 public, admin SSH optional"
+  description = "RustDesk Server Pro - 21114-21119 public, admin SSH optional"
   vpc_id      = var.vpc_id
 
   ingress {

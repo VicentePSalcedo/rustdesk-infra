@@ -16,7 +16,7 @@
           pkgs = import nixpkgs {
             inherit system;
             config = {
-              allowUnfree = true;  # terraform is BSL-licensed
+              allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "terraform" ];
             };
           };
         in

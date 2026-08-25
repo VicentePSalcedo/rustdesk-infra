@@ -126,7 +126,3 @@ cleanly. No DB pause needed at this scale.
 ~$7.75/mo fixed (`t4g.micro` + 20GB gp3) + data egress at ~$0.09/GB + the
 RustDesk Server Pro license.
 
-## Account
-
-Deploys into the Artorias AWS account (`REPLACE_WITH_ACCOUNT_ID`), which hosts only
-artorias resources. IIO and other subprojects live in separate accounts.
